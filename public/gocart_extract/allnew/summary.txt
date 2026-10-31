@@ -1,0 +1,18 @@
+Extraction summary
+==================
+Bag: sept2_20260905_124659_0.db3
+Total messages extracted: 517740
+
+Per-topic counts:
+  /imu/data: 265703
+  /livox/imu: 164536
+  /zed_right/zed_lean_camera_node/rgb/camera_info: 23675
+  /zed_left/zed_lean_camera_node/rgb/camera_info: 23586
+  /livox/lidar: 16779
+  /scan: 14578
+  /tf: 2973
+  /odom: 2733
+  /zed_left/zed_lean_camera_node/rgb/image_rect_color: 1591
+  /zed_right/zed_lean_camera_node/rgb/image_rect_color: 1584
+  /tf_static: 1
+  /robot_description: 1

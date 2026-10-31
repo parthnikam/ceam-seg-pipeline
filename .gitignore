@@ -1,0 +1,56 @@
+# ====================================================================
+# Gitignore for Media and 3D Point Cloud Files
+# ====================================================================
+
+# --- Images ---
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tiff
+*.webp
+*.svg
+*.ico
+
+# --- Videos ---
+*.mp4
+*.webm
+*.mkv
+*.avi
+*.mov
+*.flv
+*.wmv
+*.mpeg
+*.mpg
+
+# --- 3D / Point Cloud Data ---
+*.pcd
+*.ply
+
+
+# COLMAP sparse reconstruction sparse text/binary files
+cameras.txt
+images.txt
+points3D.txt
+cameras.bin
+images.bin
+points3D.bin
+
+# COLMAP dense reconstruction directories and outputs
+/dense/
+*.photometric.bin
+*.geometric.bin
+
+
+# --- other files ---
+*.env
+*.db
+*.sql
+*.sqlite
+*.sqlite3
+*.db3
+*.csv
+
+public/models/
+

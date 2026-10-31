@@ -1,0 +1,242 @@
+camera_info:
+  /zedx/zed_node/left/color/rect/image/camera_info:
+    frame_id: zedx_left_camera_frame_optical
+    width: 1920
+    height: 1200
+    distortion_model: rational_polynomial
+    D:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    K:
+    - 1267.0968017578125
+    - 0.0
+    - 962.59326171875
+    - 0.0
+    - 1267.0968017578125
+    - 612.8114624023438
+    - 0.0
+    - 0.0
+    - 1.0
+    R:
+    - 1.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 1.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 1.0
+    P:
+    - 1267.0968017578125
+    - 0.0
+    - 962.59326171875
+    - 0.0
+    - 0.0
+    - 1267.0968017578125
+    - 612.8114624023438
+    - 0.0
+    - 0.0
+    - 0.0
+    - 1.0
+    - 0.0
+  /zedx/zed_node/right/color/rect/image/camera_info:
+    frame_id: zedx_right_camera_frame_optical
+    width: 1920
+    height: 1200
+    distortion_model: rational_polynomial
+    D:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    K:
+    - 1267.0968017578125
+    - 0.0
+    - 962.59326171875
+    - 0.0
+    - 1267.0968017578125
+    - 612.8114624023438
+    - 0.0
+    - 0.0
+    - 1.0
+    R:
+    - 1.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 1.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 1.0
+    P:
+    - 1267.0968017578125
+    - 0.0
+    - 962.59326171875
+    - -152.22744750976562
+    - 0.0
+    - 1267.0968017578125
+    - 612.8114624023438
+    - 0.0
+    - 0.0
+    - 0.0
+    - 1.0
+    - 0.0
+  /zedx/zed_node/depth/depth_registered/camera_info:
+    frame_id: zedx_left_camera_frame_optical
+    width: 1920
+    height: 1200
+    distortion_model: rational_polynomial
+    D:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    K:
+    - 1267.0968017578125
+    - 0.0
+    - 962.59326171875
+    - 0.0
+    - 1267.0968017578125
+    - 612.8114624023438
+    - 0.0
+    - 0.0
+    - 1.0
+    R:
+    - 1.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 1.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 1.0
+    P:
+    - 1267.0968017578125
+    - 0.0
+    - 962.59326171875
+    - 0.0
+    - 0.0
+    - 1267.0968017578125
+    - 612.8114624023438
+    - 0.0
+    - 0.0
+    - 0.0
+    - 1.0
+    - 0.0
+tf_static:
+- parent: zedx_camera_link
+  child: zedx_camera_center
+  translation:
+  - 0.0
+  - 0.0
+  - 0.016
+  rotation_xyzw:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 1.0
+- parent: zedx_camera_center
+  child: zedx_left_camera_frame
+  translation:
+  - -0.01
+  - 0.06
+  - 0.0
+  rotation_xyzw:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 1.0
+- parent: zedx_left_camera_frame
+  child: zedx_left_camera_frame_optical
+  translation:
+  - 0.0
+  - 0.0
+  - 0.0
+  rotation_xyzw:
+  - 0.5
+  - -0.4999999999999999
+  - 0.5
+  - -0.5000000000000001
+- parent: zedx_camera_center
+  child: zedx_right_camera_frame
+  translation:
+  - -0.01
+  - -0.06
+  - 0.0
+  rotation_xyzw:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 1.0
+- parent: zedx_right_camera_frame
+  child: zedx_right_camera_frame_optical
+  translation:
+  - 0.0
+  - 0.0
+  - 0.0
+  rotation_xyzw:
+  - 0.5
+  - -0.4999999999999999
+  - 0.5
+  - -0.5000000000000001
+- parent: base_footprint
+  child: base_link
+  translation:
+  - 0.0
+  - 0.0
+  - 0.1
+  rotation_xyzw:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 1.0
+- parent: base_link
+  child: livox_frame
+  translation:
+  - 0.0
+  - 0.0
+  - 0.52
+  rotation_xyzw:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 1.0
+- parent: base_link
+  child: rear_axle
+  translation:
+  - -0.489
+  - 0.0
+  - 0.0
+  rotation_xyzw:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 1.0
+- parent: base_link
+  child: zedxone_camera_link
+  translation:
+  - 0.3
+  - 0.0
+  - 0.42
+  rotation_xyzw:
+  - -0.0868902910275923
+  - 0.0
+  - 0.0
+  - 0.9962178864711978
