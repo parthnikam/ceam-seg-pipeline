@@ -1,22 +1,21 @@
-# Road Segmentation to Point Cloud 
-
-
-We're using lidar point cloud to self locate in 3d space.
-PRoblem: We dont know what part is drivable out of that. and our lidar hasn't collected any data for the ground plane. 
-We can't just map drivable segments from the image to the point clouds.
-
-
-What I think should be done: 
-1. Visual SLAM / Structure from Motion: Recover the camera's movement and reconstruct 3D landmarks from successive images.
-2. LiDAR-based geometric mapping: Use the buildings and other vertical structures as geometric references.
-3. Map registration: Align the camera-derived reconstruction with the LiDAR coordinate system.
-4. Temporal synchronization: Associate each camera frame and its segmentation mask with the corresponding LiDAR scan.
-
-
-use pycolmap for structure for motion; 
-the left and right camera intrinsics are already known from the zed camera info;
-and the extrinsics are also known;
+# Point Cloud to Mesh Reconstruction
 
 
 
+What i want to implement in python : 
+
+
+Stage	Operation	Tool
+1	Load global map	Open3D
+2	Remove statistical outliers	Open3D
+3	Spatially partition the map	NumPy / Open3D
+4	Estimate normals	Open3D
+5	Reconstruct surfaces	Poisson / Ball Pivoting
+6	Remove unwanted components	Open3D
+7	Simplify geometry	Open3D
+8	Export individual meshes	PLY / OBJ
+9	Fill missing geometry, UVs and materials	Blender
+
+
+One important implementation decision: partition spatially, but don't blindly split at arbitrary boundaries. Use overlapping chunks and merge or trim their boundary regions afterward. Otherwise, you can introduce seams between reconstructed sections.
 

@@ -24,13 +24,17 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import webbrowser
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 import pycolmap
+
+NUM_THREADS = max(1, os.cpu_count() or 1)
 
 
 @dataclass
@@ -103,32 +107,35 @@ def extract_scene_data(
     clip_percentile: float = 98.0,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, list[CameraPoseData]]:
     """Extract filtered 3D points, colors, errors, and sorted camera poses."""
-    xyz_list: list[np.ndarray] = []
-    rgb_list: list[np.ndarray] = []
-    err_list: list[float] = []
+    points = list(rec.points3D.values())
 
-    for pt in rec.points3D.values():
-        track_len = pt.track.length() if callable(getattr(pt.track, "length", None)) else len(pt.track.elements)
-        if pt.error > max_reproj_error or track_len < min_track_length:
-            continue
-        xyz_list.append(np.asarray(pt.xyz, dtype=np.float64))
-        rgb_list.append(np.asarray(pt.color, dtype=np.uint8))
-        err_list.append(float(pt.error))
+    if points:
+        # Vectorized filtering and stacking (much faster than per-point Python ops)
+        def _track_len(pt) -> int:
+            track_len = pt.track.length() if callable(getattr(pt.track, "length", None)) else len(pt.track.elements)
+            return int(track_len)
 
-    if xyz_list:
-        xyz = np.vstack(xyz_list)
-        rgb = np.vstack(rgb_list)
-        errors = np.asarray(err_list, dtype=np.float64)
+        xyz = np.stack([np.asarray(pt.xyz, dtype=np.float64) for pt in points])
+        rgb = np.stack([np.asarray(pt.color, dtype=np.uint8) for pt in points])
+        errors = np.fromiter((float(pt.error) for pt in points), dtype=np.float64, count=len(points))
+        track_lens = np.fromiter((_track_len(pt) for pt in points), dtype=np.int64, count=len(points))
+
+        mask = (errors <= max_reproj_error) & (track_lens >= min_track_length)
 
         # Filter extreme spatial outliers so the interactive camera centers cleanly
-        if 0.0 < clip_percentile < 100.0 and len(xyz) > 20:
-            median = np.median(xyz, axis=0)
-            dists = np.linalg.norm(xyz - median, axis=1)
+        if 0.0 < clip_percentile < 100.0 and int(mask.sum()) > 20:
+            xyz_f = xyz[mask]
+            median = np.median(xyz_f, axis=0)
+            dists = np.linalg.norm(xyz_f - median, axis=1)
             cutoff = np.percentile(dists, clip_percentile)
-            mask = dists <= max(cutoff, 1e-6)
-            xyz = xyz[mask]
-            rgb = rgb[mask]
-            errors = errors[mask]
+            mask_idx = np.flatnonzero(mask)
+            mask_idx = mask_idx[dists <= max(cutoff, 1e-6)]
+            mask = np.zeros_like(mask)
+            mask[mask_idx] = True
+
+        xyz = xyz[mask]
+        rgb = rgb[mask]
+        errors = errors[mask]
     else:
         xyz = np.zeros((0, 3), dtype=np.float64)
         rgb = np.zeros((0, 3), dtype=np.uint8)
@@ -207,19 +214,28 @@ def view_with_open3d(
         "right": [1.0, 0.40, 0.15],  # Orange for right camera
     }
 
+    def _build_frustum(p):
+        extrinsic = np.eye(4, dtype=np.float64)
+        extrinsic[:3, :3] = p.R_cam_from_world
+        extrinsic[:3, 3] = p.t_cam_from_world
+        frustum = o3d.geometry.LineSet.create_camera_visualization(
+            p.width, p.height, p.K, extrinsic, scale=frustum_scale
+        )
+        frustum.paint_uniform_color(side_colors[p.side])
+        return frustum
+
+    # Build frustum geometries in parallel (C++ geometry creation releases the GIL)
+    all_frustums: list[o3d.geometry.LineSet] = []
+    try:
+        with ThreadPoolExecutor(max_workers=min(NUM_THREADS, max(1, len(poses)))) as pool:
+            all_frustums = list(pool.map(_build_frustum, poses))
+    except Exception:
+        all_frustums = [_build_frustum(p) for p in poses]
+    geometries.extend(all_frustums)
+
     for side in ("left", "right"):
         side_poses = [p for p in poses if p.side == side]
         color = side_colors[side]
-
-        for p in side_poses:
-            extrinsic = np.eye(4, dtype=np.float64)
-            extrinsic[:3, :3] = p.R_cam_from_world
-            extrinsic[:3, 3] = p.t_cam_from_world
-            frustum = o3d.geometry.LineSet.create_camera_visualization(
-                p.width, p.height, p.K, extrinsic, scale=frustum_scale
-            )
-            frustum.paint_uniform_color(color)
-            geometries.append(frustum)
 
         if len(side_poses) >= 2:
             centers = np.vstack([p.center_world for p in side_poses])
@@ -313,30 +329,40 @@ def build_web_viewer_html(
     open_browser: bool = True,
 ) -> Path:
     """Write a self-contained interactive Three.js HTML viewer and open it in the browser."""
-    frustums_payload = []
-    for p in poses:
-        fx, fy = float(p.K[0, 0]), float(p.K[1, 1])
-        cx, cy = float(p.K[0, 2]), float(p.K[1, 2])
-        w, h = float(p.width), float(p.height)
-        corners_cam = np.array(
+    if poses:
+        # Vectorized frustum corner computation for all cameras at once
+        fxs = np.array([p.K[0, 0] for p in poses])
+        fys = np.array([p.K[1, 1] for p in poses])
+        cxs = np.array([p.K[0, 2] for p in poses])
+        cys = np.array([p.K[1, 2] for p in poses])
+        ws = np.array([float(p.width) for p in poses])
+        hs = np.array([float(p.height) for p in poses])
+
+        xs = np.array([0.0, 1.0, 1.0, 0.0])
+        ys = np.array([0.0, 0.0, 1.0, 1.0])
+        corners_cam = np.stack(
             [
-                [(0.0 - cx) / fx, (0.0 - cy) / fy, 1.0],
-                [(w - cx) / fx, (0.0 - cy) / fy, 1.0],
-                [(w - cx) / fx, (h - cy) / fy, 1.0],
-                [(0.0 - cx) / fx, (h - cy) / fy, 1.0],
+                (xs[None, :] * ws[:, None] - cxs[:, None]) / fxs[:, None],
+                (ys[None, :] * hs[:, None] - cys[:, None]) / fys[:, None],
+                np.ones((len(poses), 4)),
             ],
-            dtype=np.float64,
-        )
-        R_wc = p.R_cam_from_world.T
-        dirs_world = (R_wc @ corners_cam.T).T
-        frustums_payload.append(
+            axis=2,
+        )  # (n_cams, 4, 3)
+
+        R_wc_all = np.stack([p.R_cam_from_world.T for p in poses])
+        dirs_world = np.einsum("nij,nkj->nki", R_wc_all, corners_cam)  # (n_cams, 4, 3)
+
+        frustums_payload = [
             {
                 "name": p.name,
                 "side": p.side,
                 "center": np.round(p.center_world, 5).tolist(),
-                "dirs": np.round(dirs_world, 5).tolist(),
+                "dirs": np.round(dirs_world[i], 5).tolist(),
             }
-        )
+            for i, p in enumerate(poses)
+        ]
+    else:
+        frustums_payload = []
 
     scene_json = json.dumps(
         {
