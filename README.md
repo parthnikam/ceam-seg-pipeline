@@ -1,5 +1,7 @@
 # road_segmentation
 
+Trying to combine video segmented road into lidar pointclouds. 
+
 Go-kart perception from a single forward **ZED X**: drivable pavement, left/right track edges, a metric top-down map, and the cart’s pose on that map. LiDAR (Livox) is on the URDF and comes later.
 
 **Implementation lives in [`zed_mapper/`](zed_mapper/).** That README is the system design (algorithms, curve fitting, mapping). Run it on the ZED extracts in `public/gocart_extract/test4` and `test5`.

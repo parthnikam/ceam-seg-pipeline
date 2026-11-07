@@ -39,13 +39,25 @@ class Grid:
         return self.ymax - (j + 0.5) * self.cell
 
 
-def warp_mask_to_bev(mask: np.ndarray, camera: Camera, plane: Plane, grid: Grid) -> np.ndarray:
+def warp_mask_to_bev(
+    mask: np.ndarray,
+    camera: Camera,
+    plane: Plane,
+    grid: Grid,
+    x_offset: float = 0.0,
+    y_offset: float = 0.0,
+) -> np.ndarray:
     """Inverse IPM: sample the 2D mask at each ground-plane cell.
 
     Image-border and upper-frame samples are dropped so FOV clips and the
-    horizon never become fake left/right walls.
+    horizon never become fake left/right walls. `x_offset` / `y_offset` shift
+    the grid points into another camera frame that shares this plane and the
+    grid orientation (stereo baseline), so a second camera can be warped into
+    the same grid.
     """
     xx, yy = grid.xy_maps()
+    xx = xx + x_offset
+    yy = yy + y_offset
     u, v, ok = plane_to_pixels(camera, plane, xx, yy)
     map_x = u.astype(np.float32)
     map_y = v.astype(np.float32)
@@ -138,9 +150,11 @@ def build_bev(
     plane: Plane,
     depth_m: np.ndarray,
     grid: Grid,
+    x_offset: float = 0.0,
+    y_offset: float = 0.0,
 ) -> tuple[np.ndarray, np.ndarray]:
     drive_bev = road_blob(
-        smooth_bev(warp_mask_to_bev(drivable, camera, plane, grid)),
+        smooth_bev(warp_mask_to_bev(drivable, camera, plane, grid, x_offset, y_offset)),
         grid,
     )
     obst_xyz = mask_to_link_depth(obstacle, camera, depth_m)

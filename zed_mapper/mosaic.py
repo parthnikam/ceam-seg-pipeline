@@ -25,6 +25,12 @@ class Mosaic:
     start_yaw: float = 0.0
     path: list[tuple[float, float]] = field(default_factory=list)
     driveable: np.ndarray = field(init=False, repr=False)
+    # World centre of the map window. Defaults to (0, 0) with extent_m 400,
+    # which silently drops stamps outside ±200 m when the track leaves the
+    # first quadrant. Size the window from the driven path instead
+    # (see zed_mapper_new.run.map_window) so nothing is cropped.
+    center_x: float = 0.0
+    center_y: float = 0.0
 
     def __post_init__(self):
         n = int(round(self.extent_m / self.cell))
@@ -50,8 +56,8 @@ class Mosaic:
         c, s = np.cos(self.yaw), np.sin(self.yaw)
         xw = self.x + c * xe - s * ye
         yw = self.y + s * xe + c * ye
-        row = np.rint(self.origin - xw / self.cell).astype(np.int32)
-        col = np.rint(self.origin - yw / self.cell).astype(np.int32)
+        row = np.rint(self.origin - (xw - self.center_x) / self.cell).astype(np.int32)
+        col = np.rint(self.origin - (yw - self.center_y) / self.cell).astype(np.int32)
         on = (row >= 0) & (row < self.n) & (col >= 0) & (col < self.n)
         self.driveable[row[on], col[on]] = np.maximum(self.driveable[row[on], col[on]], 1.0)
 
@@ -74,8 +80,8 @@ class Mosaic:
         self._stamp(drive_bev, grid, fit)
 
     def _to_px(self, x: float, y: float, r0: int, c0: int, scale: int) -> tuple[int, int]:
-        row = int((self.origin - x / self.cell - r0) * scale)
-        col = int((self.origin - y / self.cell - c0) * scale)
+        row = int((self.origin - (x - self.center_x) / self.cell - r0) * scale)
+        col = int((self.origin - (y - self.center_y) / self.cell - c0) * scale)
         return col, row
 
     def _content_cells(self, road: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -90,8 +96,8 @@ class Mosaic:
             points.append(self.start_xy)
         points.append((self.x, self.y))
         for x, y in points:
-            rows.append(np.array([int(round(self.origin - x / self.cell))], dtype=np.int32))
-            cols.append(np.array([int(round(self.origin - y / self.cell))], dtype=np.int32))
+            rows.append(np.array([int(round(self.origin - (x - self.center_x) / self.cell))], dtype=np.int32))
+            cols.append(np.array([int(round(self.origin - (y - self.center_y) / self.cell))], dtype=np.int32))
         return np.concatenate(rows), np.concatenate(cols)
 
     def render(self, min_px: int = 1400, px_per_cell: int = 6) -> np.ndarray:
